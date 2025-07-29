@@ -121,3 +121,102 @@ const clearCart = async (req, res, next) => {
     });
   }
 };
+
+const updateQuantity = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { productId, quantity } = req.body;
+
+    if (!productId || !quantity || quantity <= 0) {
+      return res.status(400).json({
+        message: "Invalid product ID or quantity",
+      });
+    }
+
+    const cart = await Cart.findOne({ userId });
+    if (!cart) {
+      return res.status(404).json({
+        message: "Cart not found",
+      });
+    }
+
+    const prodIndex = cart.products.findIndex(
+      (item) => item.productId.toString() === productId
+    );
+
+    if (prodIndex === -1) {
+      return res.status(404).json({
+        message: "Product not found in cart",
+      });
+    }
+
+    cart.products[prodIndex].quantity = quantity;
+
+    cart.totalPrice = await calculateTotalPrice(cart.products);
+
+    await cart.save();
+
+    res.status(200).json({
+      success: true,
+      cart,
+    });
+  } catch (error) {
+    console.log(error.message);
+    res.status(500).json({
+      message: "Something went wrong",
+    });
+  }
+};
+
+const removeFromCart = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { productId } = req.body;
+
+    if (!productId) {
+      return res.status(400).json({
+        message: "Invalid product ID",
+      });
+    }
+
+    const cart = await Cart.findOne({ userId });
+    if (!cart) {
+      return res.status(404).json({
+        message: "Cart not found",
+      });
+    }
+
+    const prodIndex = cart.products.findIndex(
+      (item) => item.productId.toString() === productId
+    );
+
+    if (prodIndex === -1) {
+      return res.status(404).json({
+        message: "Product not found in cart",
+      });
+    }
+
+    cart.products.splice(prodIndex, 1);
+    cart.totalPrice = await calculateTotalPrice(cart.products);
+
+    await cart.save();
+
+    res.status(200).json({
+      success: true,
+      cart,
+    });
+  } catch (error) {
+    console.log(error.message);
+    res.status(500).json({
+      message: "Something went wrong",
+    });
+  }
+};
+
+module.exports = {
+  addToCart,
+  getCart,
+  clearCart,
+  updateQuantity,
+  removeFromCart,
+};
